@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plano Photo Generator - BY WHYUU</title>
+    <title>Indomaret Photo Editor - BY WHYUU</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
 
         body {
             font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -62,7 +62,7 @@
         }
 
         .card-number {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, #1e3c72, #2a5298);
             color: white;
             width: 40px;
             height: 40px;
@@ -97,7 +97,7 @@
 
         .input-group input[type="text"]:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #1e3c72;
         }
 
         .photo-inputs {
@@ -132,7 +132,7 @@
         .file-input-button {
             display: block;
             padding: 12px 20px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, #1e3c72, #2a5298);
             color: white;
             border: none;
             border-radius: 8px;
@@ -144,7 +144,7 @@
 
         .file-input-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 5px 15px rgba(30, 60, 114, 0.4);
         }
 
         .preview-container {
@@ -248,7 +248,7 @@
 
         .spinner {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            border-top: 4px solid #1e3c72;
             border-radius: 50%;
             width: 50px;
             height: 50px;
@@ -280,7 +280,22 @@
     <div class="container">
         <div class="header">
             <h1>BY WHYUU</h1>
-            <p>Plano Photo Editor</p>
+            <p>Indomaret Photo Editor</p>
+        </div>
+
+        <!-- Global Store Name Input -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-number">🏪</div>
+                <h3>Nama Toko Global</h3>
+            </div>
+            <div class="input-group">
+                <label for="global-store-name">Nama Toko (untuk semua kartu):</label>
+                <input type="text" id="global-store-name" placeholder="Masukkan nama toko (contoh: TACCIPI BONE)" value="TACCIPI BONE">
+                <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                    Hasil: <strong>INDOMARET:<span id="store-preview">TACCIPI BONE</span></strong>
+                </p>
+            </div>
         </div>
 
         <div id="editor-cards">
@@ -312,11 +327,6 @@
                         <div class="card-header">
                             <div class="card-number">${i}</div>
                             <h3>Editor Foto ${i}</h3>
-                        </div>
-                        
-                        <div class="input-group">
-                            <label for="store-name-${i}">Nama Toko:</label>
-                            <input type="text" id="store-name-${i}" placeholder="Masukkan nama toko (contoh: INDOMARET)">
                         </div>
 
                         <div class="photo-inputs">
@@ -370,6 +380,12 @@
             const loading = document.getElementById('loading');
             const results = document.getElementById('results');
             const button = document.querySelector('.process-all-button');
+            const globalStoreName = document.getElementById('global-store-name').value.trim();
+            
+            if (!globalStoreName) {
+                alert('Mohon isi nama toko terlebih dahulu!');
+                return;
+            }
             
             // Show loading
             loading.style.display = 'block';
@@ -378,14 +394,13 @@
 
             // Process each card
             for (let i = 1; i <= 8; i++) {
-                const storeName = document.getElementById(`store-name-${i}`).value;
                 const contohFile = document.getElementById(`contoh-${i}`).files[0];
                 const realisasiFile = document.getElementById(`realisasi-${i}`).files[0];
 
-                if (storeName && contohFile && realisasiFile) {
+                if (contohFile && realisasiFile) {
                     try {
-                        const canvas = await createComparisonImage(storeName, contohFile, realisasiFile, i);
-                        displayResult(canvas, i, storeName);
+                        const canvas = await createComparisonImage(globalStoreName, contohFile, realisasiFile, i);
+                        displayResult(canvas, i, globalStoreName);
                     } catch (error) {
                         console.error(`Error processing card ${i}:`, error);
                     }
@@ -432,7 +447,7 @@
                     ctx.fillStyle = 'black';
                     ctx.font = `bold ${Math.floor(templateHeight * 0.06)}px Arial`;
                     ctx.textAlign = 'left';
-                    ctx.fillText(storeName + ':', nameAreaX + 20, nameAreaY + nameAreaHeight * 0.7);
+                    ctx.fillText('INDOMARET:' + storeName, nameAreaX + 20, nameAreaY + nameAreaHeight * 0.7);
                     
                     // Calculate photo areas
                     const photoAreaY = templateHeight * 0.35; // Start below headers
@@ -503,7 +518,7 @@
                     ctx.fillStyle = 'black';
                     ctx.font = 'bold 36px Arial';
                     ctx.textAlign = 'left';
-                    ctx.fillText(storeName + ':', 70, 105);
+                    ctx.fillText('INDOMARET:' + storeName, 70, 105);
                     
                     // Section backgrounds
                     ctx.fillStyle = 'white';
@@ -543,7 +558,7 @@
                 };
                 
                 // Try to load template image (adjust path as needed)
-                templateImg.src = 'IMG-20250918-WA0268.jpg'; // atau 'template.png' sesuai format file Anda
+                templateImg.src = 'template.jpg'; // atau 'template.png' sesuai format file Anda
             });
         }
 
@@ -584,6 +599,13 @@
 
         // Initialize the page
         generateCards();
+        
+        // Update store name preview
+        document.getElementById('global-store-name').addEventListener('input', function() {
+            const preview = document.getElementById('store-preview');
+            const value = this.value.trim();
+            preview.textContent = value || 'TACCIPI BONE';
+        });
     </script>
 </body>
 </html>
