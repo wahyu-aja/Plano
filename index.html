@@ -392,24 +392,53 @@
             button.disabled = true;
             results.innerHTML = '';
 
-            // Process each card
+            // Count valid cards
+            let validCards = [];
             for (let i = 1; i <= 8; i++) {
                 const contohFile = document.getElementById(`contoh-${i}`).files[0];
                 const realisasiFile = document.getElementById(`realisasi-${i}`).files[0];
-
                 if (contohFile && realisasiFile) {
-                    try {
-                        const canvas = await createComparisonImage(globalStoreName, contohFile, realisasiFile, i);
-                        displayResult(canvas, i, globalStoreName);
-                    } catch (error) {
-                        console.error(`Error processing card ${i}:`, error);
+                    validCards.push(i);
+                }
+            }
+
+            if (validCards.length === 0) {
+                alert('Mohon upload foto contoh dan realisasi pada minimal satu kartu!');
+                loading.style.display = 'none';
+                button.disabled = false;
+                return;
+            }
+
+            console.log(`Processing ${validCards.length} cards:`, validCards);
+
+            // Process each valid card with delay to prevent memory issues
+            for (let index = 0; index < validCards.length; index++) {
+                const i = validCards[index];
+                const contohFile = document.getElementById(`contoh-${i}`).files[0];
+                const realisasiFile = document.getElementById(`realisasi-${i}`).files[0];
+
+                try {
+                    console.log(`Processing card ${i}...`);
+                    const canvas = await createComparisonImage(globalStoreName, contohFile, realisasiFile, i);
+                    displayResult(canvas, i, globalStoreName);
+                    console.log(`Card ${i} processed successfully`);
+                    
+                    // Small delay between processing to prevent browser freeze
+                    if (index < validCards.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
                     }
+                } catch (error) {
+                    console.error(`Error processing card ${i}:`, error);
+                    // Show error message for this specific card
+                    displayErrorResult(i, globalStoreName, error.message);
                 }
             }
 
             // Hide loading
             loading.style.display = 'none';
             button.disabled = false;
+            
+            console.log('All cards processed');
         }
 
         // Create comparison image using template
@@ -422,143 +451,253 @@
                 const templateImg = new Image();
                 templateImg.crossOrigin = "anonymous";
                 templateImg.onload = function() {
-                    // Set canvas size based on template
-                    canvas.width = templateImg.width;
-                    canvas.height = templateImg.height;
-                    
-                    // Draw template background
-                    ctx.drawImage(templateImg, 0, 0);
-                    
-                    // Calculate positions based on template proportions
-                    const templateWidth = templateImg.width;
-                    const templateHeight = templateImg.height;
-                    
-                    // Store name area (white rectangle at top)
-                    const nameAreaX = templateWidth * 0.06; // 6% from left
-                    const nameAreaY = templateHeight * 0.08; // 8% from top
-                    const nameAreaWidth = templateWidth * 0.88; // 88% of width
-                    const nameAreaHeight = templateHeight * 0.13; // 13% of height
-                    
-                    // Clear and redraw store name area
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(nameAreaX, nameAreaY, nameAreaWidth, nameAreaHeight);
-                    
-                    // Add store name text
-                    ctx.fillStyle = 'black';
-                    ctx.font = `bold ${Math.floor(templateHeight * 0.06)}px Arial`;
-                    ctx.textAlign = 'left';
-                    ctx.fillText('INDOMARET:' + storeName, nameAreaX + 20, nameAreaY + nameAreaHeight * 0.7);
-                    
-                    // Calculate photo areas
-                    const photoAreaY = templateHeight * 0.35; // Start below headers
-                    const photoAreaHeight = templateHeight * 0.55; // Height for photos
-                    const photoAreaWidth = templateWidth * 0.44; // Width for each photo
-                    
-                    // Left photo area (CONTOH)
-                    const contohX = templateWidth * 0.06;
-                    const contohY = photoAreaY;
-                    
-                    // Right photo area (REALISASI)
-                    const realisasiX = templateWidth * 0.52;
-                    const realisasiY = photoAreaY;
-                    
-                    // Load and draw user images
-                    let userImagesLoaded = 0;
-                    
-                    function checkUserImagesComplete() {
-                        userImagesLoaded++;
-                        if (userImagesLoaded === 2) {
-                            resolve(canvas);
+                    try {
+                        // Set canvas size based on template
+                        canvas.width = templateImg.width;
+                        canvas.height = templateImg.height;
+                        
+                        // Draw template background
+                        ctx.drawImage(templateImg, 0, 0);
+                        
+                        // Calculate positions based on template proportions
+                        const templateWidth = templateImg.width;
+                        const templateHeight = templateImg.height;
+                        
+                        // Store name area - lebih presisi sesuai template
+                        const nameAreaX = templateWidth * 0.045; // 4.5% from left
+                        const nameAreaY = templateHeight * 0.06; // 6% from top  
+                        const nameAreaWidth = templateWidth * 0.91; // 91% of width
+                        const nameAreaHeight = templateHeight * 0.15; // 15% of height
+                        
+                        // Clear and redraw store name area dengan border yang tepat
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(nameAreaX, nameAreaY, nameAreaWidth, nameAreaHeight);
+                        
+                        // Add border to name area
+                        ctx.strokeStyle = '#333333';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(nameAreaX, nameAreaY, nameAreaWidth, nameAreaHeight);
+                        
+                        // Add store name text - posisi lebih akurat
+                        ctx.fillStyle = 'black';
+                        const fontSize = Math.floor(templateHeight * 0.055); // Lebih kecil untuk pas
+                        ctx.font = `bold ${fontSize}px Arial`;
+                        ctx.textAlign = 'left';
+                        const textX = nameAreaX + (templateWidth * 0.02); // 2% padding dari kiri
+                        const textY = nameAreaY + (nameAreaHeight * 0.65); // Posisi vertikal yang tepat
+                        ctx.fillText('INDOMARET:' + storeName, textX, textY);
+                        
+                        // Calculate photo areas - sesuaikan dengan template
+                        const photoStartY = templateHeight * 0.37; // Mulai setelah header CONTOH/REALISASI
+                        const photoAreaHeight = templateHeight * 0.52; // Tinggi area foto
+                        const photoAreaWidth = templateWidth * 0.43; // Lebar area foto
+                        
+                        // Left photo area (CONTOH) 
+                        const contohX = templateWidth * 0.055;
+                        const contohY = photoStartY;
+                        
+                        // Right photo area (REALISASI)
+                        const realisasiX = templateWidth * 0.515;
+                        const realisasiY = photoStartY;
+                        
+                        // Load and draw user images
+                        let userImagesLoaded = 0;
+                        let hasError = false;
+                        
+                        function checkUserImagesComplete() {
+                            userImagesLoaded++;
+                            if (userImagesLoaded === 2) {
+                                if (hasError) {
+                                    reject(new Error('Failed to load user images'));
+                                } else {
+                                    resolve(canvas);
+                                }
+                            }
                         }
+                        
+                        // Load contoh image
+                        const contohImg = new Image();
+                        contohImg.onload = function() {
+                            try {
+                                // Maintain aspect ratio
+                                const aspectRatio = contohImg.width / contohImg.height;
+                                let drawWidth = photoAreaWidth;
+                                let drawHeight = photoAreaHeight;
+                                let drawX = contohX;
+                                let drawY = contohY;
+                                
+                                if (aspectRatio > (photoAreaWidth / photoAreaHeight)) {
+                                    drawHeight = photoAreaWidth / aspectRatio;
+                                    drawY = contohY + (photoAreaHeight - drawHeight) / 2;
+                                } else {
+                                    drawWidth = photoAreaHeight * aspectRatio;
+                                    drawX = contohX + (photoAreaWidth - drawWidth) / 2;
+                                }
+                                
+                                ctx.drawImage(contohImg, drawX, drawY, drawWidth, drawHeight);
+                                checkUserImagesComplete();
+                            } catch (err) {
+                                console.error('Error drawing contoh image:', err);
+                                hasError = true;
+                                checkUserImagesComplete();
+                            }
+                        };
+                        contohImg.onerror = function(err) {
+                            console.error('Error loading contoh image:', err);
+                            hasError = true;
+                            checkUserImagesComplete();
+                        };
+                        contohImg.src = URL.createObjectURL(contohFile);
+                        
+                        // Load realisasi image
+                        const realisasiImg = new Image();
+                        realisasiImg.onload = function() {
+                            try {
+                                // Maintain aspect ratio
+                                const aspectRatio = realisasiImg.width / realisasiImg.height;
+                                let drawWidth = photoAreaWidth;
+                                let drawHeight = photoAreaHeight;
+                                let drawX = realisasiX;
+                                let drawY = realisasiY;
+                                
+                                if (aspectRatio > (photoAreaWidth / photoAreaHeight)) {
+                                    drawHeight = photoAreaWidth / aspectRatio;
+                                    drawY = realisasiY + (photoAreaHeight - drawHeight) / 2;
+                                } else {
+                                    drawWidth = photoAreaHeight * aspectRatio;
+                                    drawX = realisasiX + (photoAreaWidth - drawWidth) / 2;
+                                }
+                                
+                                ctx.drawImage(realisasiImg, drawX, drawY, drawWidth, drawHeight);
+                                checkUserImagesComplete();
+                            } catch (err) {
+                                console.error('Error drawing realisasi image:', err);
+                                hasError = true;
+                                checkUserImagesComplete();
+                            }
+                        };
+                        realisasiImg.onerror = function(err) {
+                            console.error('Error loading realisasi image:', err);
+                            hasError = true;
+                            checkUserImagesComplete();
+                        };
+                        realisasiImg.src = URL.createObjectURL(realisasiFile);
+                        
+                    } catch (err) {
+                        console.error('Error in template processing:', err);
+                        reject(err);
                     }
-                    
-                    // Load contoh image
-                    const contohImg = new Image();
-                    contohImg.onload = function() {
-                        ctx.drawImage(contohImg, contohX, contohY, photoAreaWidth, photoAreaHeight);
-                        checkUserImagesComplete();
-                    };
-                    contohImg.onerror = function() {
-                        console.error('Error loading contoh image');
-                        checkUserImagesComplete();
-                    };
-                    contohImg.src = URL.createObjectURL(contohFile);
-                    
-                    // Load realisasi image
-                    const realisasiImg = new Image();
-                    realisasiImg.onload = function() {
-                        ctx.drawImage(realisasiImg, realisasiX, realisasiY, photoAreaWidth, photoAreaHeight);
-                        checkUserImagesComplete();
-                    };
-                    realisasiImg.onerror = function() {
-                        console.error('Error loading realisasi image');
-                        checkUserImagesComplete();
-                    };
-                    realisasiImg.src = URL.createObjectURL(realisasiFile);
                 };
                 
                 templateImg.onerror = function() {
-                    console.error('Error loading template image, using fallback');
-                    // Fallback to creating template programmatically
-                    canvas.width = 800;
-                    canvas.height = 600;
-                    
-                    // Create blue gradient background
-                    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-                    gradient.addColorStop(0, '#4A90E2');
-                    gradient.addColorStop(1, '#7B68EE');
-                    ctx.fillStyle = gradient;
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    
-                    // Store name background
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(50, 50, canvas.width - 100, 80);
-                    
-                    // Store name text
-                    ctx.fillStyle = 'black';
-                    ctx.font = 'bold 36px Arial';
-                    ctx.textAlign = 'left';
-                    ctx.fillText('INDOMARET:' + storeName, 70, 105);
-                    
-                    // Section backgrounds
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(50, 160, 330, 400); // CONTOH
-                    ctx.fillRect(420, 160, 330, 400); // REALISASI
-                    
-                    // Section titles
-                    ctx.fillStyle = 'black';
-                    ctx.font = 'bold 32px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('CONTOH', 215, 200);
-                    ctx.fillText('REALISASI', 585, 200);
-                    
-                    // Load user images for fallback
-                    let fallbackImagesLoaded = 0;
-                    
-                    function checkFallbackComplete() {
-                        fallbackImagesLoaded++;
-                        if (fallbackImagesLoaded === 2) {
-                            resolve(canvas);
+                    console.log('Template not found, using fallback design');
+                    try {
+                        // Fallback to creating template programmatically
+                        canvas.width = 1080;
+                        canvas.height = 1080;
+                        
+                        // Create blue gradient background matching Indomaret colors
+                        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                        gradient.addColorStop(0, '#1e3c72');
+                        gradient.addColorStop(0.5, '#2a5298');
+                        gradient.addColorStop(1, '#4A90E2');
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        
+                        // Add some design elements
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                        for (let i = 0; i < 8; i++) {
+                            ctx.fillRect(i * 150, 0, 80, canvas.height);
                         }
+                        
+                        // Store name background
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(60, 60, canvas.width - 120, 120);
+                        ctx.strokeStyle = '#333333';
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(60, 60, canvas.width - 120, 120);
+                        
+                        // Store name text
+                        ctx.fillStyle = 'black';
+                        ctx.font = 'bold 48px Arial';
+                        ctx.textAlign = 'left';
+                        ctx.fillText('INDOMARET:' + storeName, 90, 135);
+                        
+                        // Section backgrounds
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(60, 220, 450, 60); // CONTOH header
+                        ctx.fillRect(570, 220, 450, 60); // REALISASI header
+                        ctx.fillRect(60, 280, 450, 720); // CONTOH area
+                        ctx.fillRect(570, 280, 450, 720); // REALISASI area
+                        
+                        // Section borders
+                        ctx.strokeStyle = '#333333';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(60, 220, 450, 780);
+                        ctx.strokeRect(570, 220, 450, 780);
+                        
+                        // Section titles
+                        ctx.fillStyle = 'black';
+                        ctx.font = 'bold 40px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('CONTOH', 285, 260);
+                        ctx.fillText('REALISASI', 795, 260);
+                        
+                        // Load user images for fallback
+                        let fallbackImagesLoaded = 0;
+                        let fallbackError = false;
+                        
+                        function checkFallbackComplete() {
+                            fallbackImagesLoaded++;
+                            if (fallbackImagesLoaded === 2) {
+                                if (fallbackError) {
+                                    reject(new Error('Failed to load images in fallback mode'));
+                                } else {
+                                    resolve(canvas);
+                                }
+                            }
+                        }
+                        
+                        const contohImg = new Image();
+                        contohImg.onload = function() {
+                            try {
+                                ctx.drawImage(contohImg, 80, 300, 410, 680);
+                                checkFallbackComplete();
+                            } catch (err) {
+                                fallbackError = true;
+                                checkFallbackComplete();
+                            }
+                        };
+                        contohImg.onerror = function() {
+                            fallbackError = true;
+                            checkFallbackComplete();
+                        };
+                        contohImg.src = URL.createObjectURL(contohFile);
+                        
+                        const realisasiImg = new Image();
+                        realisasiImg.onload = function() {
+                            try {
+                                ctx.drawImage(realisasiImg, 590, 300, 410, 680);
+                                checkFallbackComplete();
+                            } catch (err) {
+                                fallbackError = true;
+                                checkFallbackComplete();
+                            }
+                        };
+                        realisasiImg.onerror = function() {
+                            fallbackError = true;
+                            checkFallbackComplete();
+                        };
+                        realisasiImg.src = URL.createObjectURL(realisasiFile);
+                        
+                    } catch (err) {
+                        console.error('Error in fallback processing:', err);
+                        reject(err);
                     }
-                    
-                    const contohImg = new Image();
-                    contohImg.onload = function() {
-                        ctx.drawImage(contohImg, 60, 220, 310, 330);
-                        checkFallbackComplete();
-                    };
-                    contohImg.src = URL.createObjectURL(contohFile);
-                    
-                    const realisasiImg = new Image();
-                    realisasiImg.onload = function() {
-                        ctx.drawImage(realisasiImg, 430, 220, 310, 330);
-                        checkFallbackComplete();
-                    };
-                    realisasiImg.src = URL.createObjectURL(realisasiFile);
                 };
                 
-                // Try to load template image (adjust path as needed)
-                templateImg.src = 'IMG-20250918-WA0268.jpg'; // atau 'template.png' sesuai format file Anda
+                // Try to load template image
+                templateImg.src = 'IMG-20250918-WA0268.jpg';
             });
         }
 
@@ -588,13 +727,51 @@
             resultCtx.drawImage(canvas, 0, 0);
         }
 
+        // Display error result
+        function displayErrorResult(cardNumber, storeName, errorMessage) {
+            const results = document.getElementById('results');
+            
+            const errorHTML = `
+                <div class="result-card" style="border: 2px solid #dc3545;">
+                    <h3 style="color: #dc3545;">Error - Foto ${cardNumber} - ${storeName}</h3>
+                    <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; margin: 15px 0;">
+                        <p style="color: #dc3545; margin: 0;">
+                            <strong>Gagal memproses foto:</strong><br>
+                            ${errorMessage}
+                        </p>
+                    </div>
+                    <p style="font-size: 14px; color: #666;">
+                        Pastikan file gambar valid dan coba lagi.
+                    </p>
+                </div>
+            `;
+            
+            results.innerHTML += errorHTML;
+        }
+
         // Download image
         function downloadImage(cardNumber, storeName) {
-            const canvas = document.getElementById(`result-canvas-${cardNumber}`);
-            const link = document.createElement('a');
-            link.download = `${storeName}_Perbandingan_${cardNumber}.png`;
-            link.href = canvas.toDataURL();
-            link.click();
+            try {
+                const canvas = document.getElementById(`result-canvas-${cardNumber}`);
+                if (!canvas) {
+                    alert('Canvas tidak ditemukan!');
+                    return;
+                }
+                
+                const link = document.createElement('a');
+                link.download = `INDOMARET_${storeName}_${cardNumber}.png`;
+                link.href = canvas.toDataURL('image/png', 1.0);
+                
+                // Trigger download
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                console.log(`Downloaded: INDOMARET_${storeName}_${cardNumber}.png`);
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('Gagal mendownload gambar!');
+            }
         }
 
         // Initialize the page
